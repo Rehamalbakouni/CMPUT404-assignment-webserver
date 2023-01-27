@@ -34,22 +34,26 @@ class MyWebServer(socketserver.BaseRequestHandler):
         self.data = self.request.recv(1024).strip()
         print ("Got a request of: %s\n" % self.data)
         self.request.sendall(bytearray("OK",'utf-8'))
+        request = self.data.decode().split("\r\n")
+        print(request)
+        file_requested = request[0].split(" ")[1]
 
         # get the file path
-        file_path = os.path.abspath("./www" + self.path)
+        file_path = os.path.abspath("./www" + file_requested)
 
         # if the requested path not in .www
-        if not file_path.startwith(os.path.abspath("./www")):
-            self.send_error(404, "File not found")
+        if not file_path.startswith(os.path.abspath("./www")):
+            self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\nContent-Type:text/html" + "\n\n" + "", "utf-8"))
             return
 
         # Must use 301 to correct path ending.
-        elif (os.path.isdir('./www' + self.path + '/')):
+        if (os.path.isdir('./www' + file_requested + '/')):
             self.request.sendall(bytearray("HTTP/1.1 301 Moved Permanently\r\nLocation: " + "/" + file_path + "/", "utf-8"))
+            return
 
         # if exists
-        elif not os.path.isfile(file_path):
-            self.send_error(404, "File not found")
+        if not os.path.isfile(file_path):
+            self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\nContent-Type:text/html" + "\n\n" + "", "utf-8"))
             return
         
         with open(file_path, 'rb') as file:
@@ -57,18 +61,26 @@ class MyWebServer(socketserver.BaseRequestHandler):
         
         # get content type
         if file_path.endswith(".html"):
-            self.send_header("Content-Type", "text/html")
+            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + content, "utf-8"))
+            return
+            #self.send_header("Content-Type", "text/html")
         elif file_path.endswith(".css"):
-            self.send_header("Content-Type", "text/css")
+            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/css" + "\n\n" + content, "utf-8"))
+            return
+            #self.send_header("Content-Type", "text/css")
 
         # send the content
-        self.send_response(200)
-        self.end_headers()
+        self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + content, "utf-8"))
+        #self.send_response(200)
+        #self.end_headers()
         self.wfile.write(content)
 
         # Return a status code of “405 Method Not Allowed” for any method you cannot handle (POST/PUT/DELETE).
         if self.request != "GET":
             self.request.sendall(bytearray("HTTP/1.1 405 Method Not Allowed\r\nContent-Type:text/html" + "\n\n" + "", "utf-8"))
+            return
+        else:
+            self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\nContent-Type:text/html" + "\n\n" + "", "utf-8"))
             return
 
 if __name__ == "__main__":
