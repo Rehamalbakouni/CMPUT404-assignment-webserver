@@ -1,5 +1,6 @@
 #  coding: utf-8 
 import socketserver
+import os
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -32,7 +33,42 @@ class MyWebServer(socketserver.BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(1024).strip()
         print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(bytearray("OK",'utf-8'))
+
+        # get the file path
+        file_path = os.path.abspath("./www" + self.path)
+
+        # if the requested path not in .www
+        if not file_path.startwith(os.path.abspath("./www")):
+            self.send_error(404, "File not found")
+            return
+
+        # Must use 301 to correct path ending.
+        elif (os.path.isdir('./www' + self.path + '/')):
+            self.request.sendall(bytearray("HTTP/1.1 301 Moved Permanently\r\nLocation: " + "/" + file_path + "/", "utf-8"))
+
+        # if exists
+        elif not os.path.isfile(file_path):
+            self.send_error(404, "File not found")
+            return
+        
+        with open(file_path, 'rb') as file:
+            content = file.read()
+        
+        # get content type
+        if file_path.endswith(".html"):
+            self.send_header("Content-Type", "text/html")
+        elif file_path.endswith(".css"):
+            self.send_header("Content-Type", "text/css")
+
+        # send the content
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(content)
+
+        # Return a status code of “405 Method Not Allowed” for any method you cannot handle (POST/PUT/DELETE).
+        if self.request != "GET":
+            self.request.sendall(bytearray("HTTP/1.1 405 Method Not Allowed\r\nContent-Type:text/html" + "\n\n" + "", "utf-8"))
+            return
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
