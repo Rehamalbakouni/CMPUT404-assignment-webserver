@@ -71,12 +71,10 @@ class MyWebServer(socketserver.BaseRequestHandler):
             self.request.sendall(bytearray("HTTP/1.1 301 Moved Permanently\r\nLocation: " + "/" + file_path + "/\n\n", "utf-8"))
             return
 
-        # only handle GET requests
         if self.data.split()[0] != "GET":
             self.request.sendall(bytearray("HTTP/1.1 405 Method Not Allowed\r\n\r\n",'utf-8'))
             return
         
-        # file not found
         else:
             self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\n\r\n",'utf-8'))
             return
