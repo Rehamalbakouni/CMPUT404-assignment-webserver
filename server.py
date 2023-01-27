@@ -33,7 +33,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(1024).strip()
         print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(bytearray("OK",'utf-8'))
+        #self.request.sendall(bytearray("OK",'utf-8'))
         request = self.data.decode().split("\r\n")
         print(request)
         file_requested = request[0].split(" ")[1]
@@ -47,8 +47,17 @@ class MyWebServer(socketserver.BaseRequestHandler):
             return
 
         # Must use 301 to correct path ending.
+
+       # if (os.path.isdir('./www' + file_requested + '/')):
+           # self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + str(content), "utf-8"))
+           # return
+
+        if (os.path.isdir('./www' + file_requested )):
+            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + content, "utf-8"))
+            return
+        # Must use 301 to correct path ending.
         if (os.path.isdir('./www' + file_requested + '/')):
-            self.request.sendall(bytearray("HTTP/1.1 301 Moved Permanently\r\nLocation: " + "/" + file_path + "/", "utf-8"))
+            self.request.sendall(bytearray("HTTP/1.1 301 Moved Permanently\r\nLocation: " + "/" + file_path + "/\n\n", "utf-8"))
             return
 
         # if exists
@@ -61,16 +70,16 @@ class MyWebServer(socketserver.BaseRequestHandler):
         
         # get content type
         if file_path.endswith(".html"):
-            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + content, "utf-8"))
+            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + str(content), "utf-8"))
             return
             #self.send_header("Content-Type", "text/html")
         elif file_path.endswith(".css"):
-            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/css" + "\n\n" + content, "utf-8"))
+            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/css" + "\n\n" + str(content), "utf-8"))
             return
             #self.send_header("Content-Type", "text/css")
 
         # send the content
-        self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + content, "utf-8"))
+        self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + str(content), "utf-8"))
         #self.send_response(200)
         #self.end_headers()
         self.wfile.write(content)
