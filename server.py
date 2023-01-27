@@ -1,6 +1,14 @@
+
 #  coding: utf-8 
 import socketserver
 import os
+import mimetypes
+
+
+# You will need to create a class that inherits from BaseHTTPRequestHandler
+# and override the do_GET method. You will also need to create a server
+# that inherits from TCPServer and pass in your request handler class.
+
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -31,66 +39,52 @@ import os
 class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
-        self.data = self.request.recv(1024).strip()
+        self.data = self.request.recv(1024).strip().decode('utf-8')
         print ("Got a request of: %s\n" % self.data)
-        #self.request.sendall(bytearray("OK",'utf-8'))
-        request = self.data.decode().split("\r\n")
-        print(request)
-        file_requested = request[0].split(" ")[1]
 
-        # get the file path
-        file_path = os.path.abspath("./www" + file_requested)
 
-        # if the requested path not in .www
-        if not file_path.startswith(os.path.abspath("./www")):
-            self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\nContent-Type:text/html" + "\n\n" + "", "utf-8"))
+        path = self.data.split()[1]
+
+        file_path = os.path.abspath("www"+ path)
+  
+        if os.path.commonpath([file_path, os.path.abspath("www")]) != os.path.abspath("www"):
+            self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\n\r\n",'utf-8'))
             return
 
-        # Must use 301 to correct path ending.
-
-       # if (os.path.isdir('./www' + file_requested + '/')):
-           # self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + str(content), "utf-8"))
-           # return
-
-        if (os.path.isdir('./www' + file_requested )):
-            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + content, "utf-8"))
+        if os.path.isfile(file_path):
+            content = file = open(file_path).read()
+            response = f"HTTP/1.1 200 OK\r\nContent-Length: " + str(len(content)) + "\r\n"
+            response += f"Content-Type: {mimetypes.guess_type(file_path)[0]}; charset=utf-8\r\n"
+            response += "\r\n"
+            self.request.sendall(bytearray(response + content,'utf-8'))
             return
-        # Must use 301 to correct path ending.
-        if (os.path.isdir('./www' + file_requested + '/')):
+
+        if os.path.isdir(file_path) and path.endswith("/"):  
+     
+            content = file = open(file_path + "/index.html").read()
+            if os.path.isfile(file_path + "/index.html"):
+                self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Length: " + str(len(content)) + "\r\nContent-Type: text/html; charset=utf-8\r\n" + content,'utf-8'))   
+                return
+    
+
+        if os.path.isdir(file_path) and not path.endswith("/") :
             self.request.sendall(bytearray("HTTP/1.1 301 Moved Permanently\r\nLocation: " + "/" + file_path + "/\n\n", "utf-8"))
             return
 
-        # if exists
-        if not os.path.isfile(file_path):
-            self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\nContent-Type:text/html" + "\n\n" + "", "utf-8"))
+        # only handle GET requests
+        if self.data.split()[0] != "GET":
+            self.request.sendall(bytearray("HTTP/1.1 405 Method Not Allowed\r\n\r\n",'utf-8'))
             return
         
-        with open(file_path, 'rb') as file:
-            content = file.read()
-        
-        # get content type
-        if file_path.endswith(".html"):
-            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + str(content), "utf-8"))
-            return
-            #self.send_header("Content-Type", "text/html")
-        elif file_path.endswith(".css"):
-            self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/css" + "\n\n" + str(content), "utf-8"))
-            return
-            #self.send_header("Content-Type", "text/css")
-
-        # send the content
-        self.request.sendall(bytearray("HTTP/1.1 200 OK\r\nContent-Type:text/html" + "\n\n" + str(content), "utf-8"))
-        #self.send_response(200)
-        #self.end_headers()
-        self.wfile.write(content)
-
-        # Return a status code of “405 Method Not Allowed” for any method you cannot handle (POST/PUT/DELETE).
-        if self.request != "GET":
-            self.request.sendall(bytearray("HTTP/1.1 405 Method Not Allowed\r\nContent-Type:text/html" + "\n\n" + "", "utf-8"))
-            return
+        # file not found
         else:
-            self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\nContent-Type:text/html" + "\n\n" + "", "utf-8"))
+            self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\n\r\n",'utf-8'))
             return
+        
+        
+    
+    
+
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
